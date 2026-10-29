@@ -1,2 +1,130 @@
-# Copy-Paste-Kit
-A Copy-Paste Kit for MAC
+# CopyKit
+
+A small, native clipboard history for macOS. Keep your six most recent text or image copies, open a panel in the bottom-right corner, and choose an item with a number key or a click.
+
+Built with Swift, AppKit, and SwiftUI. No third-party dependencies, account, server, or database.
+
+## Features
+
+- Up to six recent copies, newest first.
+- Plain text with original whitespace and Unicode preserved.
+- PNG, TIFF, JPEG, HEIC, GIF, and BMP clipboard image data, with compact previews.
+- Single image files copied from Finder, captured as image content.
+- **Control + ;** to show or hide history. The shortcut is configurable.
+- **1–6** or a click to copy an item and dismiss the panel.
+- Arrow keys and Return for selection; Escape or an outside click to dismiss.
+- Native appearance, light and dark modes, and placement on the screen containing the pointer.
+- Pause, clear history, and optional launch at login from the menu bar.
+
+Selecting an item updates the clipboard. Press **Command + V** in the destination app to paste it.
+
+## Requirements
+
+- macOS 13 or later.
+- To build: Swift 6 or later and a macOS 15.4 or later SDK, supplied by recent Xcode or Command Line Tools.
+
+The deployment target is macOS 13. Newer clipboard permission APIs are guarded by availability checks. A complete Xcode installation is not required for a local build.
+
+## Build and run
+
+```sh
+git clone https://github.com/XinCm/Copy-Paste-Kit.git
+cd Copy-Paste-Kit
+./scripts/build-app.sh
+open dist/CopyKit.app
+```
+
+The app appears in the menu bar, not the Dock. Copy some text or an image, wait briefly, and press **Control + ;**. Release the shortcut before pressing a number key. The shortcut and number selection use physical US keyboard positions; on a US keyboard, `;` is immediately to the right of `L`.
+
+For daily use, move `dist/CopyKit.app` to `/Applications` and launch that copy. Enable **Launch at Login** from the menu only if desired. macOS may require approval in Login Items. If registration fails, check the app's location and signing identity.
+
+Build for both Apple silicon and Intel:
+
+```sh
+./scripts/build-app.sh --universal
+```
+
+Local builds are ad-hoc signed. To use your own signing identity:
+
+```sh
+CODE_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" ./scripts/build-app.sh
+```
+
+Public distribution also requires the appropriate signing and notarization workflow. The build script does not publish, notarize, install, or enable login items automatically.
+
+For a visual preview without reading or writing the system clipboard or registering a global shortcut:
+
+```sh
+open dist/CopyKit.app --args --demo
+```
+
+Quit an existing CopyKit instance before starting the preview. Development runs are also available with `swift run CopyKit`; use the app bundle for normal use and login-item support.
+
+## Behavior and limits
+
+- Recording starts with the next clipboard change after launch or resume. Earlier clipboard history cannot be recovered.
+- Each external copy is a separate entry, including repeated content. Selecting a history item does not create a duplicate or reorder the history.
+- A visible panel uses a fixed snapshot. Incoming copies appear the next time the panel opens, so the numbered choices do not move under your fingers.
+- The panel measures each snapshot before positioning it, keeps a 20-point gap above the visible Dock, and repositions when the screen configuration changes. SwiftUI does not resize the window after placement.
+- The clipboard is checked approximately every 300 ms, with timer tolerance for energy efficiency. Very rapid changes between checks, or during image preparation, may be missed.
+- Image decoding and thumbnail generation run off the main thread. The original image data is retained for copying; the thumbnail is only a preview.
+- Each entry is limited to 20 MiB, including its thumbnail. Images are limited to 50 megapixels. History has a 60 MiB payload budget, so large images can reduce the retained count below six. This is a payload budget, not a cap on total process memory.
+- Image files from Finder are read once and retained as image data. Selecting them restores image content, not Finder file-copy semantics. Missing, unreadable, or oversized files are skipped.
+- Rich text is captured as plain text when a plain-text representation is available. Multi-item copies, arbitrary files, and unsupported clipboard formats are ignored. Animated images use a single-frame preview while retaining the original data.
+- Sleep or an inactive user session suspends recording. Resuming does not import changes made during suspension.
+- History stays in process memory and is cleared on exit. Only shortcut preferences are saved. Clearing history does not change the system clipboard.
+
+## Privacy and permissions
+
+CopyKit makes no network requests and does not log clipboard contents. Copies marked with `org.nspasteboard.ConcealedType`, `TransientType`, or `AutoGeneratedType` are ignored. These markers depend on the source app; unmarked passwords and other sensitive text cannot be reliably identified. Use **Pause Recording** or **Clear History** when needed.
+
+On systems enforcing pasteboard privacy, allow CopyKit to read the clipboard in System Settings. If access is denied or further permission is needed, the panel explains the issue. After changing permission, choose **Retry Clipboard Access** from the menu. This action attempts to read the current clipboard. CopyKit avoids repeatedly triggering permission prompts while the access policy is `ask`.
+
+The app uses a registered global hotkey and handles number keys only in its own panel. It does not request Accessibility or Input Monitoring permission and does not simulate a paste into other apps.
+
+The default shortcut is a candidate with few standard system conflicts, not a guarantee that every installed app leaves it unused. Registration errors are reported. App-specific shortcut conflicts cannot all be detected; use **Change Shortcut…** when necessary. Custom shortcuts require Control or Command plus a supported letter, number, punctuation key, or Space.
+
+## Project layout
+
+```text
+Package.swift
+Sources/CopyKit/
+  App/          Application lifecycle, menu bar, and login-item integration
+  Clipboard/    History, pasteboard snapshots, image preparation, and polling
+  Shortcuts/    Shortcut preferences and global hotkey registration
+  UI/           Floating panel, SwiftUI rows, and shortcut recorder
+Tests/CopyKitTests/
+Resources/Info.plist
+scripts/        Validation and app-bundle packaging
+.github/workflows/ci.yml
+```
+
+The project deliberately uses a single executable target. Clipboard data and image snapshots are value types; UI, history mutations, and pasteboard access are isolated to the main actor. Image preparation runs in a utility task. Clearing or stopping recording invalidates pending reads so they cannot restore cleared history.
+
+## Development and verification
+
+```sh
+./scripts/check.sh
+```
+
+This builds with warnings treated as errors, runs the checks, and validates the property list and shell syntax. With a full toolchain, checks run through Swift Testing. If Command Line Tools omit the Testing module, a small standalone runner executes the same check functions without fetching dependencies. Pasteboard tests use isolated named pasteboards rather than the user's general clipboard. Tests cover eviction, memory limits, Unicode text, original image bytes, image files, ignored content, pause/resume, self-write suppression, shortcut settings, and number-key mapping.
+
+Before a release, manually verify:
+
+- The shortcut opens the panel from another app, including a full-screen Space.
+- Holding the shortcut does not repeatedly toggle the panel.
+- All six number keys, keypad keys, mouse selection, Escape, and outside-click dismissal work.
+- After selection, Command + V in the original app pastes the chosen text or image, with no stray digit.
+- Chinese input methods, light/dark mode, multiple displays, and different Dock positions work.
+- Shortcut changes survive relaunch, and a conflicting registration leaves a usable menu-bar entry.
+- Pasteboard permission denial, sleep/wake, and launch-at-login behavior work on supported macOS versions.
+
+Automated tests do not replace these window-server, permission, and multi-display checks.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Keep changes small, native, and dependency-free unless there is a clear reason to expand the scope.
+
+## License
+
+[MIT](LICENSE).
