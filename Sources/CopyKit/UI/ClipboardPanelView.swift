@@ -3,6 +3,7 @@ import SwiftUI
 struct ClipboardPanelView: View {
     @ObservedObject var state: PanelState
     let onChoose: (Int) -> Void
+    let onClick: (Int) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -28,17 +29,41 @@ struct ClipboardPanelView: View {
             } else {
                 VStack(spacing: 4) {
                     ForEach(Array(state.entries.enumerated()), id: \.element.id) { index, entry in
-                        Button {
-                            onChoose(index)
-                        } label: {
-                            ClipboardRow(entry: entry, index: index, selected: state.selectedIndex == index)
+                        HStack(spacing: 0) {
+                            Button {
+                                onClick(index)
+                            } label: {
+                                ClipboardRow(entry: entry, index: index)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("\(index + 1). \(entry.accessibilitySummary)")
+                            .accessibilityHint(isImage(entry) ? "Pin this image above other windows" : "Copy this item")
+                            if isImage(entry) {
+                                Button {
+                                    onChoose(index)
+                                } label: {
+                                    Image(systemName: "doc.on.doc")
+                                        .frame(width: 32, height: 44)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .help("Copy image")
+                                .accessibilityLabel("Copy image \(index + 1)")
+                                .padding(.trailing, 4)
+                            }
                         }
-                        .buttonStyle(.plain)
+                        .background(state.selectedIndex == index ? Color.accentColor.opacity(0.14) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
                         .onHover { hovering in if hovering { state.selectedIndex = index } }
-                        .accessibilityLabel("\(index + 1). \(entry.accessibilitySummary)")
-                        .accessibilityHint("Copy this item and close the panel")
                     }
                 }
+            }
+
+            if state.entries.contains(where: isImage) {
+                Text("Click image to pin · Scroll to resize · Esc to close")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
             }
 
             if let message = state.message {
@@ -65,12 +90,15 @@ struct ClipboardPanelView: View {
         .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.primary.opacity(0.10), lineWidth: 0.5))
         .fixedSize(horizontal: true, vertical: true)
     }
+    private func isImage(_ entry: ClipboardEntry) -> Bool {
+        if case .image = entry.content { return true }
+        return false
+    }
 }
 
 private struct ClipboardRow: View {
     let entry: ClipboardEntry
     let index: Int
-    let selected: Bool
 
     var body: some View {
         HStack(spacing: 12) {
@@ -102,7 +130,6 @@ private struct ClipboardRow: View {
         .padding(.horizontal, 10)
         .frame(height: 60)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(selected ? Color.accentColor.opacity(0.14) : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .contentShape(Rectangle())
     }

@@ -18,8 +18,8 @@ enum PanelLayout {
 
 @MainActor
 final class PanelContentController: NSHostingController<ClipboardPanelView> {
-    init(state: PanelState, onChoose: @escaping (Int) -> Void) {
-        super.init(rootView: ClipboardPanelView(state: state, onChoose: onChoose))
+    init(state: PanelState, onChoose: @escaping (Int) -> Void, onClick: ((Int) -> Void)? = nil) {
+        super.init(rootView: ClipboardPanelView(state: state, onChoose: onChoose, onClick: onClick ?? onChoose))
         // AppKit owns the complete window frame. Late SwiftUI constraints must not move its bottom edge.
         sizingOptions = []
     }

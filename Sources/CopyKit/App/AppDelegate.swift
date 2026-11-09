@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private lazy var monitor = PasteboardMonitor(history: history)
     private let hotKey = HotKeyManager()
     private let panel = ClipboardPanelController()
+    private let imagePins = ImagePinStore()
     private var statusItem: NSStatusItem?
     private var shortcutWindow: ShortcutWindowController?
     private var shortcut = KeyboardShortcut.load()
@@ -20,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard let self else { return false }
             return self.isDemo || self.monitor.copy(entry)
         }
+        panel.onPin = { [weak self] entry in self?.imagePins.pin(entry) ?? false }
         if isDemo {
             loadDemo()
             showHistory()
@@ -44,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         panel.hide()
+        imagePins.closeAll()
         monitor.stop()
         hotKey.stop()
         NSWorkspace.shared.notificationCenter.removeObserver(self)
@@ -79,6 +82,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             addItem(monitor.isPaused ? "Resume Recording" : "Pause Recording", action: #selector(togglePause), to: menu)
         }
         addItem("Clear History", action: #selector(clearHistory), to: menu)
+        if !imagePins.pins.isEmpty {
+            addItem("Close All Pinned Images", action: #selector(closePinnedImages), to: menu)
+        }
         if !isDemo {
             menu.addItem(.separator())
             addItem("Change Shortcut…", action: #selector(changeShortcut), to: menu)
@@ -116,6 +122,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         panel.hide()
         monitor.clearHistory()
     }
+    @objc private func closePinnedImages() { imagePins.closeAll() }
     @objc private func retryAccess() { monitor.retryAccess() }
     @objc private func quit() { NSApp.terminate(nil) }
     @objc private func suspendRecording() {
@@ -182,7 +189,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.orderFrontStandardAboutPanel(options: [
             .applicationName: "CopyKit",
             .applicationVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-                ?? "0.1.1",
+                ?? "0.2.1",
             .credits: NSAttributedString(
                 string:
                     "A small, local clipboard history for macOS.\nText and images. Six recent items. No network access."

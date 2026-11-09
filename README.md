@@ -11,12 +11,15 @@ Built with Swift, AppKit, and SwiftUI. No third-party dependencies, account, ser
 - PNG, TIFF, JPEG, HEIC, GIF, and BMP clipboard image data, with compact previews.
 - Single image files copied from Finder, captured as image content.
 - **Control + ;** to show or hide history. The shortcut is configurable.
-- **1–6** or a click to copy an item and dismiss the panel.
+- **1–6** to copy any item and dismiss the panel; click a text row to copy it.
+- Click an image row to pin the original image above ordinary app windows; use its copy button to copy instead.
+- Drag pinned images to move them, scroll or pinch to resize, and click then press Escape to close.
+- Multiple independent image pins, with **Close All Pinned Images** in the menu bar.
 - Arrow keys and Return for selection; Escape or an outside click to dismiss.
 - Native appearance, light and dark modes, and placement on the screen containing the pointer.
 - Pause, clear history, and optional launch at login from the menu bar.
 
-Selecting an item updates the clipboard. Press **Command + V** in the destination app to paste it.
+Copying an item updates the clipboard. Pinning an image leaves the clipboard unchanged. Press **Command + V** in the destination app to paste it.
 
 ## Requirements
 
@@ -60,6 +63,14 @@ open dist/CopyKit.app --args --demo
 
 Quit an existing CopyKit instance before starting the preview. Development runs are also available with `swift run CopyKit`; use the app bundle for normal use and login-item support.
 
+## Pinned images
+
+Open history with **Control + ;**, then click an image row. The history panel closes and the image opens in a floating window. The selected pin has a thin accent-colored border. Drag anywhere on the image to move it. Scroll up to enlarge and down to shrink. For trackpad pinching, click the pin first, then spread or pinch two fingers with the pointer over it. Opening or clicking a pin activates CopyKit so macOS can deliver magnification gestures. After switching to another app, click the pin again before pinching. Resizing preserves the aspect ratio, follows the pointer, and stays within the display's usable area.
+
+Click a pin and press **Escape** to close only that image. Clicking another app leaves the pins visible. Opening the same history entry again brings its existing pin forward. Different entries can remain pinned together. Choose **Close All Pinned Images** from the menu bar to close them together.
+
+Pins display the original image rather than the history thumbnail. They remain above ordinary app windows, including across Spaces; macOS system surfaces may appear above them. Pins last until closed or the app exits, and are never saved to disk. Clearing history does not close existing pins. Each pin retains its image separately from the history budget, so close unused pins to release memory.
+
 ## Behavior and limits
 
 - Recording starts with the next clipboard change after launch or resume. Earlier clipboard history cannot be recovered.
@@ -92,7 +103,7 @@ Sources/CopyKit/
   App/          Application lifecycle, menu bar, and login-item integration
   Clipboard/    History, pasteboard snapshots, image preparation, and polling
   Shortcuts/    Shortcut preferences and global hotkey registration
-  UI/           Floating panel, SwiftUI rows, and shortcut recorder
+  UI/           History panel, image pins, layout, and shortcut recorder
 Tests/CopyKitTests/
 Resources/Info.plist
 scripts/        Validation and app-bundle packaging
@@ -107,7 +118,7 @@ The project deliberately uses a single executable target. Clipboard data and ima
 ./scripts/check.sh
 ```
 
-This builds with warnings treated as errors, runs the checks, and validates the property list and shell syntax. With a full toolchain, checks run through Swift Testing. If Command Line Tools omit the Testing module, a small standalone runner executes the same check functions without fetching dependencies. Pasteboard tests use isolated named pasteboards rather than the user's general clipboard. Tests cover eviction, memory limits, Unicode text, original image bytes, image files, ignored content, pause/resume, self-write suppression, shortcut settings, and number-key mapping.
+This builds with warnings treated as errors, runs the checks, and validates the property list and shell syntax. With a full toolchain, checks run through Swift Testing. If Command Line Tools omit the Testing module, a small standalone runner executes the same check functions without fetching dependencies. Pasteboard tests use isolated named pasteboards rather than the user's general clipboard. Tests cover eviction, memory limits, Unicode text, original image bytes, image files, ignored content, pause/resume, self-write suppression, shortcut settings, number-key mapping, image pin routing, independent dismissal, and zoom geometry.
 
 Before a release, manually verify:
 
@@ -115,6 +126,9 @@ Before a release, manually verify:
 - Holding the shortcut does not repeatedly toggle the panel.
 - All six number keys, keypad keys, mouse selection, Escape, and outside-click dismissal work.
 - After selection, Command + V in the original app pastes the chosen text or image, with no stray digit.
+- Image clicks open pins; number keys and image copy buttons still copy without creating pins.
+- Pins stay visible when switching apps; dragging, wheel/pinch resizing, and Escape affect the intended image.
+- Multiple pins, reopening an existing pin, Close All Pinned Images, and quitting release the images.
 - Chinese input methods, light/dark mode, multiple displays, and different Dock positions work.
 - Shortcut changes survive relaunch, and a conflicting registration leaves a usable menu-bar entry.
 - Pasteboard permission denial, sleep/wake, and launch-at-login behavior work on supported macOS versions.

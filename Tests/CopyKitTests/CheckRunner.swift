@@ -81,6 +81,21 @@ struct ProjectCheck: Sendable, CustomStringConvertible {
         .init(name: "Stable window frame after layout") {
             try await PanelLayoutTests().lateLayoutDoesNotResizeThePositionedWindow()
         },
+        .init(name: "Pinned images fit displays") {
+            try ImagePinTests().initialImagesFitEachDisplayWithoutDistortion()
+        },
+        .init(name: "Image zoom anchor and bounds") {
+            try ImagePinTests().zoomPreservesTheCursorAnchorAndClampsAtDisplayEdges()
+        },
+        .init(name: "Image click and copy routing") {
+            try ImagePinTests().mousePinsImagesWhileKeyboardAndCopyButtonsStillCopy()
+        },
+        .init(name: "Independent image dismissal") {
+            try ImagePinTests().escapeClosesOnlyTheTargetImageAndReleasesItsCallback()
+        },
+        .init(name: "Image pin failure handling") {
+            try ImagePinTests().invalidImagesFailWithoutDismissingHistory()
+        },
     ]
 }
 

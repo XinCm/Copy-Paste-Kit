@@ -12,6 +12,7 @@ final class PanelState: ObservableObject {
 @MainActor
 final class ClipboardPanelController: NSObject, NSWindowDelegate {
     var onChoose: ((ClipboardEntry) -> Bool)?
+    var onPin: ((ClipboardEntry) -> Bool)?
     let state = PanelState()
     private let panel: ClipboardPanel
     private var contentController: PanelContentController?
@@ -70,7 +71,11 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
 
     private func rebuildContent() {
         // Create the hosting controller after updating the snapshot so its first measurement is current.
-        let content = PanelContentController(state: state) { [weak self] index in self?.choose(index) }
+        let content = PanelContentController(
+            state: state,
+            onChoose: { [weak self] index in self?.choose(index) },
+            onClick: { [weak self] index in self?.choose(index, pinImage: true) }
+        )
         contentController = content
         panel.contentViewController = content
     }
@@ -85,15 +90,22 @@ final class ClipboardPanelController: NSObject, NSWindowDelegate {
         if panel.isVisible { positionPanel() }
     }
 
-    private func choose(_ index: Int) {
+    func choose(_ index: Int, pinImage: Bool = false) {
         guard state.entries.indices.contains(index) else {
             NSSound.beep()
             return
         }
-        if onChoose?(state.entries[index]) == true {
+        let entry = state.entries[index]
+        let shouldPin: Bool
+        if case .image = entry.content { shouldPin = pinImage } else { shouldPin = false }
+        let succeeded = shouldPin ? onPin?(entry) == true : onChoose?(entry) == true
+        if succeeded {
             hide()
         } else {
-            state.message = "Could not copy this item. Please try again."
+            state.message =
+                shouldPin
+                ? "Could not open this image. Please try again."
+                : "Could not copy this item. Please try again."
             rebuildContent()
             positionPanel()
         }
